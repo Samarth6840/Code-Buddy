@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: analyze
+    description: Code analysis operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /analyze:
+    post:
+      operationId: analyzeCode
+      tags: [analyze]
+      summary: Analyze code with AI
+      description: Analyzes code and returns structured explanation via SSE stream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "200":
+          description: SSE stream of analysis sections
+          content:
+            text/event-stream: {}
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeError"
+  /resolve-url:
+    post:
+      operationId: resolveUrl
+      tags: [analyze]
+      summary: Resolve a URL to raw code content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveUrlRequest"
+      responses:
+        "200":
+          description: Resolved code content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolveUrlResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeError"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    AnalyzeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 15000
+        language:
+          type: string
+        modes:
+          type: array
+          items:
+            type: string
+            enum: [explain, eli5, debug, teach, refactor, tests, full]
+        errorMessage:
+          type: string
+          maxLength: 2000
+        userLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        sessionId:
+          type: string
+        streamResponse:
+          type: boolean
+        source:
+          type: string
+          enum: [web, cli]
+      required:
+        - code
+        - modes
+    ResolveUrlRequest:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+    ResolveUrlResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        language:
+          type: string
+        filename:
+          type: string
+        lineCount:
+          type: integer
+      required:
+        - code
+        - lineCount
+    AnalyzeError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        retryAfter:
+          type: integer
+      required:
+        - error
